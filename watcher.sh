@@ -1,27 +1,27 @@
 #!/bin/bash
 
-# Name of the namespace
+# Define variables
 NAMESPACE="sre"
+DEPLOYMENT_NAME="swype-app"
+MAX_RESTARTS=3
 
-# Name of the deployment
-DEPLOYMENT="swype-app"
-
-# Maximum number of restarts before scaling down
-MAX_RESTARTS=4
-
+# Infinite loop to monitor the pod restarts
 while true; do
-  # Get the number of restarts of the pod
-  RESTARTS=$(kubectl get pods -n ${NAMESPACE} -l app=${DEPLOYMENT} -o jsonpath="{.items[0].status.containerStatuses[0].restartCount}")
+    # Fetch the number of restarts for the specified deployment
+    CURRENT_RESTARTS=$(kubectl get pods -n ${NAMESPACE} -l app=${DEPLOYMENT_NAME} -o jsonpath="{.items[0].status.containerStatuses[0].restartCount}")
 
-  echo "Current number of restarts: ${RESTARTS}"
+    # Display the current number of restarts
+    echo "Current restart count for $DEPLOYMENT_NAME: $CURRENT_RESTARTS"
 
-  # If the number of restarts is greater than the maximum allowed, scale down the deployment
-  if (( RESTARTS > MAX_RESTARTS )); then
-    echo "Maximum number of restarts exceeded. Scaling down the deployment..."
-    kubectl scale --replicas=0 deployment/${DEPLOYMENT} -n ${NAMESPACE}
-    break
-  fi
-
-  # Wait for a while before the next check
-  sleep 60
+    # Check if the current number of restarts is greater than the allowed maximum
+    if [ "$CURRENT_RESTARTS" -gt "$MAX_RESTARTS" ]; then
+        echo "Restart limit exceeded. Scaling down $DEPLOYMENT_NAME."
+        # Scale down the deployment to zero replicas
+        kubectl scale deployment $DEPLOYMENT_NAME --replicas=0 -n $NAMESPACE
+        # Exit the loop and script
+        break
+    else
+        # Pause the script for 60 seconds before the next check
+        sleep 60
+    fi
 done
